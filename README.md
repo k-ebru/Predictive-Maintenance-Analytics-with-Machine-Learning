@@ -1,148 +1,143 @@
-# Predictive Maintenance: Regression and Classification of Turbofan Engine Sensor Data
+# Turbofan Engine Remaining Useful Life and Health Classification
 
-Predicting **Time-to-Failure (TTF)** and classifying aircraft engines as
-**healthy or faulty** from multivariate sensor data, using two regression
-models and two classification models with engine-level cross-validation and
-recall-targeted thresholding.
+Predicting how many cycles an aircraft engine has left, and flagging engines
+that need maintenance soon, from multivariate sensor readings.
 
-This project started life as a MATLAB study (see `matlab/`) and was rewritten
-in Python for portability and reuse — same preprocessing pipeline, same
-metrics, same modelling choices.
+I originally built this project in MATLAB; the Python version in this repo
+follows the same pipeline and reaches almost identical numerical results.
+The MATLAB scripts are kept under `matlab/` as the starting point.
 
----
+## What the project does
 
-## Problem
+The dataset records one month of run-to-failure histories for 100 training
+engines (20,631 cycles total) plus a snapshot of 100 test engines whose
+true Time-to-Failure is held out. For each cycle there is a cycle counter
+and four sensor channels (`s1` to `s4`).
 
-Aircraft engines degrade over many operating cycles before failing. A
-maintenance team needs answers to two questions for every engine in the
-fleet:
+Two questions:
 
-1. **How many cycles before the engine fails?** (regression)
-2. **Should this engine be flagged for maintenance right now?** (classification)
+1. How many cycles until each engine fails? Regression on TTF.
+2. Should an engine be flagged now? Binary classification with the rule
+   "faulty if remaining TTF is 30 cycles or less".
 
-The dataset gives one month of run-to-failure histories for 100 training
-engines (20,631 cycles) and a snapshot for 100 test engines whose true TTF
-is held out. Each cycle records four sensors (`s1`-`s4`) plus the cycle
-counter.
+## Pipeline
 
----
+Preprocessing (same for both tasks):
 
-## Methods
+* Trailing moving-average smoothing on each sensor, window size 3, applied
+  per engine to keep degradation trends but remove short-term noise.
+* For regression, the training TTF is capped at 125 cycles (piecewise-linear
+  RUL, Heimes 2008) so the model focuses on the informative end-of-life part.
+* Z-score normalisation using training statistics for the scale-sensitive
+  models.
+* For the test set, only the last available cycle of each engine is used.
+  That row represents the current state at decision time.
 
-### Shared preprocessing
-- Trailing moving-average smoothing (window = 3) on each sensor, per engine
-- TTF cap at 125 cycles (piecewise-linear RUL, Heimes 2008) for regression
-- Z-score normalisation using training statistics for scale-sensitive models
+Regression models:
 
-### Regression — TTF prediction
-| Model | Reason |
-|-------|--------|
-| Random forest (500 trees, min leaf size 120) | Captures non-linear sensor → TTF interactions, robust to noisy inputs |
-| Stepwise quadratic regression | Produces a compact, interpretable formula with main effects, cycle-sensor interactions and a couple of squared terms |
+* Random forest, 500 trees, minimum leaf size 120, original feature scale.
+* Stepwise quadratic regression with forward/backward selection on a
+  candidate set of main effects, cycle-sensor interactions and a few
+  squared terms.
 
-### Classification — engine health (TTF ≤ 30 → faulty)
-| Model | Reason |
-|-------|--------|
-| Logistic regression | Interpretable baseline; threshold averaged across 10 folds targeting recall ≥ 0.95 |
-| KNN (K tuned in 35-55) | Non-parametric, handles non-linear local structure; threshold from Youden's J |
+Classification models, both on z-scored features:
 
-Both classifiers use **engine-level 10-fold cross-validation** to prevent
-leakage between consecutive cycles of the same engine.
+* Logistic regression. The decision threshold is averaged across 10
+  engine-level cross-validation folds, picking the threshold that keeps
+  recall above 0.95 in each fold.
+* KNN with K chosen in the range 35-55 by mean F1 over the same 10 folds.
+  The final threshold comes from Youden's J on the training set.
 
----
+The 10-fold split is by engine id, not by row, so consecutive cycles of the
+same engine never appear in both train and validation.
 
 ## Results
 
-### Regression (test set)
+Regression on the test set:
 
-| Model | MAE | RMSE | R² |
-|-------|----:|-----:|---:|
+| Model              | MAE   | RMSE  | R^2  |
+|--------------------|-------|-------|------|
 | Stepwise quadratic | 16.63 | 20.65 | 0.73 |
-| Random forest      | **15.34** | **19.77** | **0.76** |
+| Random forest      | 15.89 | 20.50 | 0.74 |
 
-Random forest produces a slightly tighter residual band and lower error.
+Classification on the test set:
 
-### Classification (test set)
+| Model               | Accuracy | Precision | Recall | F1   | AUC  |
+|---------------------|----------|-----------|--------|------|------|
+| Logistic regression | 0.91     | 0.81      | 0.84   | 0.82 | 0.96 |
+| KNN (K = 41)        | 0.92     | 0.76      | 1.00   | 0.86 | 0.97 |
 
-| Model | Accuracy | Precision | Recall | F1 | AUC |
-|-------|---------:|----------:|-------:|---:|----:|
-| Logistic regression | 0.91 | 0.81 | 0.84 | 0.82 | 0.96 |
-| KNN                 | 0.93 | 0.80 | **0.96** | **0.87** | 0.97 |
-
-KNN catches more true failures (higher recall) without losing precision —
-the right trade-off for an aviation maintenance setting.
-
-See [`report.md`](report.md) for a one-page methodology summary, or open the
-notebooks for the full analysis with figures.
-
----
-
-## Repository structure
+The stepwise output reproduces the MATLAB formula exactly:
 
 ```
-SLM_Predictive_Maintenance/
-├── README.md
-├── report.md                              # one-page summary
-├── requirements.txt
-├── .gitignore
-│
-├── notebooks/
-│   ├── 01_eda.ipynb                       # data quality, sensor trends, correlations
-│   ├── 02_regression_ttf.ipynb            # RF + stepwise quadratic
-│   └── 03_classification.ipynb            # logistic + KNN, CV, thresholding
-│
-├── src/
-│   ├── preprocessing.py                   # smoothing, clipping, normalisation
-│   ├── regression.py                      # RF + custom stepwise routine
-│   ├── classification.py                  # logistic + KNN + threshold tuning
-│   └── evaluation.py                      # metrics + plotting helpers
-│
-├── sql/
-│   ├── 01_create_tables.sql
-│   ├── 02_engine_lifecycle_summary.sql
-│   ├── 03_faulty_engines_at_risk.sql
-│   └── 04_sensor_anomalies.sql
-│
-├── matlab/                                # original MATLAB prototypes
-│   ├── regression.m
-│   └── classification.m
-│
-├── figures/                               # outputs generated by the notebooks
-└── data/
-    ├── train_selected.csv
-    ├── test_selected.csv
-    ├── PM_truth.txt
-    └── README.md
+TTF = 84.4956 - 17.0118*cycle - 7.4903*s1 + 10.4856*cycle^2 - 9.2043*s3
+      - 5.7366*cycle:s3 - 4.6750*cycle:s1 + 3.3432*s2 + 2.3127*s4
+      + 2.3581*cycle:s2 - 0.9063*s1:s2 - 0.5367*s4^2
 ```
 
----
+A one-page methodology summary is in [`report.md`](report.md).
 
 ## How to run
 
 ```bash
 pip install -r requirements.txt
 
+# quick run from the command line
+python run_pipeline.py
+
+# or open the notebooks
 cd notebooks
 jupyter notebook
 ```
 
-Open the notebooks in order: `01_eda` → `02_regression_ttf` → `03_classification`.
-All inputs are already in `data/` — no downloads required.
+The notebooks should be opened in order: `01_eda` then `02_regression_ttf`
+then `03_classification`. All the data files are inside `data/` so nothing
+extra needs to be downloaded.
 
----
+## Repository layout
 
-## Limitations and future work
+```
+SLM_Predictive_Maintenance/
+  README.md
+  report.md
+  run_pipeline.py          quick command-line reproduction
+  requirements.txt
+  .gitignore
+  notebooks/
+    01_eda.ipynb
+    02_regression_ttf.ipynb
+    03_classification.ipynb
+  src/
+    preprocessing.py       smoothing, clipping, normalisation
+    regression.py          random forest + stepwise quadratic
+    classification.py      logistic + KNN + threshold tuning
+    evaluation.py          metrics and plotting helpers
+  sql/
+    01_create_tables.sql
+    02_engine_lifecycle_summary.sql
+    03_faulty_engines_at_risk.sql
+    04_sensor_anomalies.sql
+  matlab/                  original MATLAB prototypes
+    regression.m
+    classification.m
+  data/
+    train_selected.csv
+    test_selected.csv
+    PM_truth.txt
+  figures/                 generated by the notebooks
+```
 
-- **Single operating regime** — 100 engines under similar conditions limits
-  generalisation. Adding multi-regime data would test robustness.
-- **Single-cycle classification** — models look at one cycle in isolation.
-  Sequence models (LSTM, 1D-CNN) could exploit the time-series structure.
-- **Imbalance handling** — addressed here via recall-targeted thresholds;
-  cost-sensitive losses or resampling are reasonable alternatives.
+## Limitations and what I would try next
 
----
+* The 100 training engines all run under similar operating conditions,
+  so generalisation to other regimes is not tested here. Multi-regime data
+  would be the natural next step.
+* The classifiers look at a single cycle in isolation. A sequence model
+  like an LSTM or a 1D CNN would be able to use the time-series structure.
+* Class imbalance is handled at the threshold, not in the loss. Sample
+  weighting or focal loss are reasonable alternatives.
 
-## Tech stack
+## Stack
 
-Python · pandas · NumPy · scikit-learn · statsmodels · matplotlib · SQL
-(originally prototyped in MATLAB)
+Python, pandas, NumPy, scikit-learn, statsmodels, SciPy, Matplotlib, SQL.
+Originally prototyped in MATLAB.
