@@ -135,7 +135,7 @@ def stepwise_quadratic(X_train_norm, y_train, p_enter=0.05, p_leave=0.10,
 def stepwise_predict(model, terms, X_norm):
     """Predict TTF using the fitted stepwise model."""
     X = _design_matrix(X_norm, terms)
-    preds = model.predict(X).to_numpy()
+    preds = np.asarray(model.predict(X), dtype=float).copy()
     preds[preds < 0] = 0
     return preds
 

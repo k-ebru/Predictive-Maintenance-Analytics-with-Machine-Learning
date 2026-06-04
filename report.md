@@ -1,65 +1,88 @@
-# Methodology summary — one page
+# Methodology summary
 
 ## Data
 
-A pre-selected subset of the NASA C-MAPSS turbofan engine dataset is used:
-20,631 training cycles across 100 engines, plus a single snapshot for each of
-100 test engines. Each row carries the engine id, cycle counter, four sensors
-(`s1`–`s4`) and (for the training set) the remaining Time-to-Failure (TTF).
-True test TTFs are held out in `PM_truth.txt`.
+A pre-selected subset of the NASA C-MAPSS turbofan engine dataset is used.
+There are 20,631 training cycles across 100 engines and a single snapshot
+per test engine for 100 test engines. Each row carries the engine id, the
+cycle counter, four sensors (`s1` to `s4`) and, for the training set, the
+remaining Time-to-Failure (TTF). The true test TTFs are kept separately in
+`PM_truth.txt`.
 
-EDA highlights:
-- no missing sensor values
-- strong class imbalance once `TTF ≤ 30` is treated as "faulty"
-- train and test sensor distributions overlap closely
-- monotone degradation visible in all four sensors
+Quick EDA findings:
+
+* no missing sensor values, so no imputation is needed
+* strong class imbalance once `TTF <= 30` is treated as faulty
+* train and test sensor distributions overlap well, so the test data is
+  representative
+* monotone degradation trends are visible in all four sensors
 
 ## Preprocessing
 
-The same pipeline feeds both tasks:
+The same pipeline feeds both tasks. First, a trailing moving-average filter
+with window size 3 is applied to each sensor separately per engine. This
+removes short-term noise while keeping the slow degradation pattern.
 
-1. **Trailing moving-average smoothing** (window = 3) applied per engine to
-   suppress short-term noise while preserving the slow degradation trend.
-2. **TTF cap at 125 cycles** for regression — a piecewise-linear RUL
-   formulation (Heimes, 2008) that focuses the loss on the informative
-   end-of-life region instead of the long healthy plateau.
-3. **Z-score normalisation** using training statistics, applied to the test
-   set with the same parameters, for the scale-sensitive models.
-4. **Last-cycle slicing** for the test set — only the final observation per
-   test engine is used, reflecting the operational moment of decision.
+For regression, the training TTF is capped at 125 cycles. This is the
+piecewise-linear RUL formulation (Heimes 2008) and pushes the model to
+focus on the informative end-of-life region instead of the long healthy
+plateau.
 
-## Regression — Time-to-Failure
+Z-score normalisation is fitted on the training data only and then applied
+to the test set with the same mean and standard deviation. Only the
+scale-sensitive models use the normalised inputs; random forest uses the
+original scale because trees are scale-invariant.
 
-Two models trained on the smoothed, capped data:
+For the test set, only the final observation of each engine is kept. That
+row represents the operational moment when a maintenance decision would be
+made.
 
-- **Random forest** (500 bagged trees, min leaf size 120) — operates on the
-  original feature scale. Test MAE = 15.34 cycles, RMSE = 19.77, R² = 0.76.
-- **Stepwise quadratic regression** on normalised inputs — forward/backward
-  selection over main effects, cycle-sensor interactions and selected squared
-  terms; final test MAE = 16.63, RMSE = 20.65, R² = 0.73.
+## Regression for Time-to-Failure
 
-Random forest captures non-linear degradation slightly better, but stepwise
-gives an explicit equation that is easy to inspect.
+Random forest is fitted with 500 bagged trees and a minimum leaf size of
+120. On the test engines it gives MAE = 15.89 cycles, RMSE = 20.50,
+R^2 = 0.74.
 
-## Classification — engine health
+Stepwise quadratic regression starts from a constant model and iteratively
+adds or drops terms based on their p-values. The candidate set includes
+main effects, cycle-sensor interactions and a couple of squared terms. The
+final formula has 11 selected terms and gives MAE = 16.63, RMSE = 20.65,
+R^2 = 0.73 on the test set.
 
-Binary label: `1` if remaining TTF ≤ 30 cycles. Two models on z-scored
-features:
+Random forest captures the non-linear pattern slightly better; stepwise
+trades a small amount of accuracy for an explicit, inspectable equation.
 
-- **Logistic regression** with a probability threshold tuned by 10-fold
-  engine-level cross-validation, targeting recall ≥ 0.95. The per-fold
-  thresholds are averaged into a single operating threshold.
-- **KNN** with K chosen in `[35, 55]` by the mean F1 across the same
-  engine-level folds, then a final threshold from Youden's J on the training
-  set.
+## Classification for engine health
 
-Test results: KNN reaches recall = 0.96 / F1 = 0.87 against logistic
-regression's 0.84 / 0.82, at comparable precision and AUC. The recall-first
-threshold tuning is what keeps undetected failures low — the safety-critical
-behaviour for aviation maintenance.
+Labels are `1` if remaining TTF is at most 30 cycles, else `0`. Both
+models use z-scored features.
+
+Logistic regression is fit on the full training set. Its decision
+threshold is chosen by 10-fold engine-level cross-validation: for each
+fold, the threshold that gives recall above 0.95 is recorded, then the 10
+fold thresholds are averaged into a single operating threshold. The
+intuition is that missing a real failure is much more expensive than
+issuing a false alarm.
+
+KNN is tuned by trying K values from 35 to 55, again using the same 10
+engine-level folds, and picking the K with the best mean F1. The final
+threshold comes from Youden's J on the training set. The chosen K was 41.
+
+Test set performance is:
+
+| Model               | Accuracy | Precision | Recall | F1   | AUC  |
+|---------------------|----------|-----------|--------|------|------|
+| Logistic regression | 0.91     | 0.81      | 0.84   | 0.82 | 0.96 |
+| KNN                 | 0.92     | 0.76      | 1.00   | 0.86 | 0.97 |
+
+KNN catches more failures than logistic regression at a small precision
+cost, which is the right trade-off in an aviation maintenance setting.
 
 ## Limitations
 
-- Single operating regime and a small test fleet — generalisation untested
-- Single-cycle classification ignores temporal context (LSTM / 1D-CNN next)
-- Imbalance handled at threshold level, not in the loss function
+* The 100 training engines all share a similar operating regime; results
+  may not transfer to other conditions.
+* The classifiers look at a single cycle at a time; sequence models
+  (LSTM, 1D CNN) would use the time-series structure directly.
+* Class imbalance is addressed through threshold tuning; sample weighting
+  or focal loss would be alternatives worth comparing.
