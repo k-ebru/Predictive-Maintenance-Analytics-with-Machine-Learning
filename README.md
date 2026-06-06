@@ -97,7 +97,7 @@ extra needs to be downloaded.
 ## Repository layout
 
 ```
-SLM_Predictive_Maintenance/
+Predictive-Maintenance-Analytics-with-Machine-Learning/
   README.md
   report.md
   run_pipeline.py          quick command-line reproduction
