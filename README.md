@@ -7,8 +7,6 @@ I originally built this project in MATLAB; the Python version in this repo
 follows the same pipeline and reaches almost identical numerical results.
 The MATLAB scripts are kept under `matlab/` as the starting point.
 
-![Model results summary](figures/model_results.svg)
-
 ## What the project does
 
 The dataset records one month of run-to-failure histories for 100 training
@@ -136,7 +134,6 @@ Predictive-Maintenance-Analytics-with-Machine-Learning/
     train_selected.csv
     test_selected.csv
     PM_truth.txt
-  figures/                 summary figure used in the README
 ```
 
 ## Limitations and what I would try next
