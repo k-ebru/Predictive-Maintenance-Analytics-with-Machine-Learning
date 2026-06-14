@@ -104,6 +104,24 @@ The notebooks should be opened in order: `01_eda` then `02_regression_ttf`
 then `03_classification`. All the data files are inside `data/` so nothing
 extra needs to be downloaded.
 
+## Tests
+
+A small pytest suite covers the preprocessing helpers, the engine-level
+cross-validation split (so I can prove engines never leak across folds) and
+the deterministic parts of the regression pipeline.
+
+```bash
+pip install pytest
+pytest tests/ -v
+```
+
+## Reproducibility
+
+The pipeline is seeded end-to-end: the random forest, the engine-level KFold
+and any other source of randomness use `random_state=42`. Running
+`python run_pipeline.py` on the data files in `data/` reproduces every number
+in the results tables above.
+
 ## Repository layout
 
 ```
@@ -122,6 +140,7 @@ Predictive-Maintenance-Analytics-with-Machine-Learning/
     regression.py          random forest + stepwise quadratic
     classification.py      logistic + KNN + threshold tuning
     evaluation.py          metrics and plotting helpers
+  tests/                   pytest suite
   sql/
     01_create_tables.sql
     02_engine_lifecycle_summary.sql
