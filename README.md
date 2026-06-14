@@ -104,6 +104,22 @@ The notebooks should be opened in order: `01_eda` then `02_regression_ttf`
 then `03_classification`. All the data files are inside `data/` so nothing
 extra needs to be downloaded.
 
+## Tests
+
+A small pytest suite covers the preprocessing helpers, the engine level
+cross validation split and the regression utilities.
+
+```bash
+pip install pytest
+pytest tests/ -v
+```
+
+## Reproducibility
+
+The random forest and the KFold split both use `random_state=42`, so
+`python run_pipeline.py` on the files in `data/` gives the numbers in the
+results tables above.
+
 ## Repository layout
 
 ```
@@ -122,6 +138,7 @@ Predictive-Maintenance-Analytics-with-Machine-Learning/
     regression.py          random forest + stepwise quadratic
     classification.py      logistic + KNN + threshold tuning
     evaluation.py          metrics and plotting helpers
+  tests/                   pytest suite
   sql/
     01_create_tables.sql
     02_engine_lifecycle_summary.sql
