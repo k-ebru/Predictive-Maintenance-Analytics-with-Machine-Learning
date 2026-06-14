@@ -1,9 +1,4 @@
-"""Tests for the regression helpers.
-
-These cover the deterministic pieces: candidate term construction, design
-matrix layout, and the prediction-clipping rule. Full model fitting is left
-to the pipeline run.
-"""
+"""Tests for the regression helpers."""
 
 import numpy as np
 import pandas as pd

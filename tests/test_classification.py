@@ -1,9 +1,4 @@
-"""Tests for the classification helpers.
-
-The engine-level CV split is the key piece of correctness here: if a single
-engine's rows ended up split across train and validation we would silently
-leak time-series structure into the model evaluation.
-"""
+"""Tests for the classification helpers."""
 
 import numpy as np
 

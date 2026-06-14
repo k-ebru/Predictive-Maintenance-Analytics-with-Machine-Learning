@@ -106,9 +106,8 @@ extra needs to be downloaded.
 
 ## Tests
 
-A small pytest suite covers the preprocessing helpers, the engine-level
-cross-validation split (so I can prove engines never leak across folds) and
-the deterministic parts of the regression pipeline.
+A small pytest suite covers the preprocessing helpers, the engine level
+cross validation split and the regression utilities.
 
 ```bash
 pip install pytest
@@ -117,10 +116,9 @@ pytest tests/ -v
 
 ## Reproducibility
 
-The pipeline is seeded end-to-end: the random forest, the engine-level KFold
-and any other source of randomness use `random_state=42`. Running
-`python run_pipeline.py` on the data files in `data/` reproduces every number
-in the results tables above.
+The random forest and the KFold split both use `random_state=42`, so
+`python run_pipeline.py` on the files in `data/` gives the numbers in the
+results tables above.
 
 ## Repository layout
 

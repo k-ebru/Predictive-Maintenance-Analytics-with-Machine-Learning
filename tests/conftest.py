@@ -1,5 +1,3 @@
-"""Make the project root importable so tests can do `from src import ...`."""
-
 import sys
 from pathlib import Path
 
