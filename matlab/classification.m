@@ -38,7 +38,7 @@ THR = 30;
 y_train = double(train_tbl.ttf <= THR);
 y_test = double(y_truth <= THR);
 
-% Select Features (Included 'cycle' as requested)
+% Select features
 feat_vars = {'cycle','s1','s2','s3','s4'};
 X_train = train_tbl(:, feat_vars);
 

@@ -55,7 +55,7 @@ def plot_prediction_band(y_pred, y_true, rmse, title, color="b", ax=None):
         _, ax = plt.subplots(figsize=(9, 4))
     x = np.arange(len(y_pred))
     ax.fill_between(x, y_pred - rmse, y_pred + rmse,
-                    color=color, alpha=0.2, label="±1 RMSE band")
+                    color=color, alpha=0.2, label="+/-1 RMSE band")
     ax.plot(x, y_pred, color=color, linewidth=1.5, label="Prediction")
     ax.scatter(x, y_true, c="k", s=18, alpha=0.6, label="True TTF")
     ax.set_xlabel("Test engine index")

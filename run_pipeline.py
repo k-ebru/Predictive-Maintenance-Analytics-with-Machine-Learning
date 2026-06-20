@@ -6,11 +6,13 @@ Jupyter.
 
     python run_pipeline.py
 """
-import sys, os, warnings
+import os
+import sys
+import warnings
+
 warnings.filterwarnings("ignore")
 sys.path.insert(0, os.path.dirname(__file__))
 
-import numpy as np
 import pandas as pd
 
 from src.preprocessing import (

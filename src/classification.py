@@ -7,7 +7,6 @@ Two models are implemented (matching the MATLAB study):
 """
 
 import numpy as np
-import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import roc_curve, f1_score

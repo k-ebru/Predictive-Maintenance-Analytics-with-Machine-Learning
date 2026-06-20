@@ -9,8 +9,8 @@ The MATLAB scripts are kept under `matlab/` as the starting point.
 
 ## What the project does
 
-The dataset records one month of run-to-failure histories for 100 training
-engines (20,631 cycles total) plus a snapshot of 100 test engines whose
+The dataset records run-to-failure histories for 100 training
+engines (20,631 cycles total) plus cycle histories for 100 test engines whose
 true Time-to-Failure is held out. For each cycle there is a cycle counter
 and four sensor channels (`s1` to `s4`).
 

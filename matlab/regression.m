@@ -1,4 +1,4 @@
-%% REGRESSION (TIME_TO FAILURE/TTF)
+%% REGRESSION (TIME-TO-FAILURE/TTF)
 %% 1. Setup and Data Loading
 clear; clc; close all;
 
@@ -9,16 +9,13 @@ truth_tbl = readtable('PM_truth.txt', 'ReadVariableNames', false);
 y_true_test = table2array(truth_tbl);
 
 
-%% 2. Preprocessing (Smoothing) - TRAILING WINDOW (Duzeltilmis Hali)
+%% 2. Preprocessing (Smoothing) - Trailing Window
 w_size = 3; 
 
 % Smooth Training Data
 train_ids = unique(train_tbl.id);
 for i = 1:length(train_ids)
     idx = train_tbl.id == train_ids(i);
-    
-   
-   
     train_tbl.s1(idx) = movmean(train_tbl.s1(idx), [w_size-1, 0]);
     train_tbl.s2(idx) = movmean(train_tbl.s2(idx), [w_size-1, 0]);
     train_tbl.s3(idx) = movmean(train_tbl.s3(idx), [w_size-1, 0]);
@@ -29,8 +26,6 @@ end
 test_ids = unique(test_tbl.id);
 for i = 1:length(test_ids)
     idx = test_tbl.id == test_ids(i);
-    
-   
     test_tbl.s1(idx) = movmean(test_tbl.s1(idx), [w_size-1, 0]);
     test_tbl.s2(idx) = movmean(test_tbl.s2(idx), [w_size-1, 0]);
     test_tbl.s3(idx) = movmean(test_tbl.s3(idx), [w_size-1, 0]);
@@ -64,11 +59,7 @@ end
 mdl_sw = stepwiselm(X_train_norm, y_train, 'constant', 'Upper', 'quadratic', ...
                     'ResponseVar', 'ttf', 'Verbose', 0);
 
-%%% 4. Model 1: Stepwise Regression
-mdl_sw = stepwiselm(X_train_norm, y_train, 'constant', 'Upper', 'quadratic', ...
-                    'ResponseVar', 'ttf', 'Verbose', 0);
-
-% --- EXTRACT FORMULA WITH COEFFICIENTS ---
+% Extract formula with coefficients
 coeffs = mdl_sw.Coefficients.Estimate; 
 names = mdl_sw.CoefficientNames;       
 
@@ -81,10 +72,8 @@ for i = 1:length(names)
     if strcmp(term_name, '(Intercept)')
         formula_str = [formula_str, sprintf('%.4f', c_val)];
     else
-        % Replace colon with asterisk
         term_name = strrep(term_name, ':', '*');
         
-        % Append to formula string
         if c_val >= 0
             formula_str = [formula_str, sprintf(' + (%.4f * %s)', c_val, term_name)];
         else
@@ -120,7 +109,7 @@ pred_rf_test(pred_rf_test < 0) = 0;
 y_true_test_clipped = y_true_test;
 y_true_test_clipped(y_true_test_clipped > 125) = 125;
 
-% --- Stepwise Metrics ---
+% Stepwise metrics
 err_sw_tr = pred_sw_train - y_train;
 rmse_sw_tr = sqrt(mean(err_sw_tr.^2));
 mae_sw_tr = mean(abs(err_sw_tr));
@@ -131,7 +120,7 @@ rmse_sw_ts = sqrt(mean(err_sw_ts.^2));
 mae_sw_ts = mean(abs(err_sw_ts));
 r2_sw_ts = 1 - (sum(err_sw_ts.^2) / sum((y_true_test_clipped - mean(y_true_test_clipped)).^2));
 
-% --- Random Forest Metrics ---
+% Random forest metrics
 err_rf_tr = pred_rf_train - y_train;
 rmse_rf_tr = sqrt(mean(err_rf_tr.^2));
 mae_rf_tr = mean(abs(err_rf_tr));
@@ -156,7 +145,7 @@ fprintf('\n');
 lbls = {'Cycle', 'S_{1}', 'S_{2}', 'S_{3}', 'S_{4}'};
 sensor_names = {'s1', 's2', 's3', 's4'};
 
-% --- A. Sensor Degradation Path (Single Unit) ---
+% A. Sensor degradation path for one engine
 figure('Name', 'Single Unit Degradation', 'Color', 'w', 'NumberTitle', 'off');
 sample_id = 11; 
 idx = train_tbl.id == sample_id; 
@@ -178,7 +167,7 @@ for k = 1:4
     hold off;
 end
 
-% --- B. Sensor Degradation Paths (All Units) ---
+% B. Sensor degradation paths for all engines
 figure('Name', 'Sensor Degradation Paths', 'Color', 'w', 'NumberTitle', 'off');
 unique_ids = unique(train_tbl.id);
 
